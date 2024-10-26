@@ -117,6 +117,7 @@
 
 #include <map>
 #include <stdio.h>
+#include <integrators/owoIntegrator.h>
 
 namespace pbrt {
 
@@ -1676,6 +1677,8 @@ Integrator *RenderOptions::MakeIntegrator() const {
     Integrator *integrator = nullptr;
     if (IntegratorName == "whitted")
         integrator = CreateWhittedIntegrator(IntegratorParams, sampler, camera);
+    else if (IntegratorName == "owo")
+        integrator = CreateOwOIntegrator(IntegratorParams, sampler, camera);
     else if (IntegratorName == "directlighting")
         integrator =
             CreateDirectLightingIntegrator(IntegratorParams, sampler, camera);
