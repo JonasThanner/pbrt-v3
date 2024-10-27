@@ -1,4 +1,6 @@
 
+
+#pragma once
 // integrators/whitted.h*
 #include "pbrt.h"
 #include "integrator.h"

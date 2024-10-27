@@ -6,6 +6,7 @@
 #include "film.h"
 #include "paramset.h"
 
+
 namespace pbrt
 {
 
@@ -15,8 +16,6 @@ namespace pbrt
                            Sampler& sampler, MemoryArena& arena,
                            int depth) const 
     {
-        //Set Profiler Phase
-        ProfilePhase p(Prof::SamplerIntegratorLi);
 
         //Create return specturm = dark
         Spectrum returnSpectrum = Spectrum(0.0f);
@@ -24,6 +23,11 @@ namespace pbrt
         //Create Ray Hit and check for lights
         SurfaceInteraction interaction;
         scene.Intersect(ray, &interaction);
+
+        if (!interaction.bsdf)
+        {
+            return returnSpectrum;
+        }
 
         // Go trough all lights and check if they're visible => If yes, add to returnSpectrum
         for each (const auto& light in scene.lights) 
@@ -41,10 +45,13 @@ namespace pbrt
             {
                 continue;
             }
-            if (!output.IsBlack() && visibility.Unoccluded(scene))
+            
+            Spectrum matColor = interaction.bsdf->f(interaction.wo, lightSourceDirection);
+
+            if (!matColor.IsBlack() && !output.IsBlack() && visibility.Unoccluded(scene) && pdf != 0)
             {
-                //Do cross product calculation for cosine
-                returnSpectrum += output * AbsDot(lightSourceDirection, interaction.n) / pdf;
+                //Do cosine calculations
+                returnSpectrum += matColor * output * AbsDot(lightSourceDirection, interaction.shading.n) / pdf;
             }
         }
 
