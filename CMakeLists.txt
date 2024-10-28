@@ -488,7 +488,7 @@ ADD_LIBRARY ( pbrt STATIC
   ${PBRT_CORE_SOURCE}
   ${PBRT_CORE_HEADERS}
   ${PBRT_SOURCE}
-   "src/integrators/owoIntegrator.cpp" "src/integrators/owoIntegrator.h")
+  )
 ADD_SANITIZERS ( pbrt )
 
 # A non-exhaustive but pretty representative set..
@@ -519,7 +519,7 @@ SET(ALL_PBRT_LIBS
 )
 
 # Main renderer
-ADD_EXECUTABLE ( pbrt_exe src/main/pbrt.cpp  "src/integrators/owoIntegrator.cpp" "src/integrators/owoIntegrator.h")
+ADD_EXECUTABLE ( pbrt_exe src/main/pbrt.cpp )
 ADD_SANITIZERS ( pbrt_exe )
 
 SET_TARGET_PROPERTIES ( pbrt_exe PROPERTIES OUTPUT_NAME pbrt )
@@ -527,21 +527,21 @@ TARGET_COMPILE_FEATURES ( pbrt_exe PRIVATE ${PBRT_CXX11_FEATURES} )
 TARGET_LINK_LIBRARIES ( pbrt_exe ${ALL_PBRT_LIBS} )
 
 # Tools
-ADD_EXECUTABLE ( bsdftest src/tools/bsdftest.cpp  "src/integrators/owoIntegrator.cpp" "src/integrators/owoIntegrator.h")
+ADD_EXECUTABLE ( bsdftest src/tools/bsdftest.cpp )
 ADD_SANITIZERS ( bsdftest )
 TARGET_COMPILE_FEATURES ( bsdftest PRIVATE ${PBRT_CXX11_FEATURES} )
 TARGET_LINK_LIBRARIES ( bsdftest ${ALL_PBRT_LIBS} )
 
-ADD_EXECUTABLE ( imgtool src/tools/imgtool.cpp  "src/integrators/owoIntegrator.cpp" "src/integrators/owoIntegrator.h")
+ADD_EXECUTABLE ( imgtool src/tools/imgtool.cpp )
 ADD_SANITIZERS ( imgtool )
 TARGET_COMPILE_FEATURES ( imgtool PRIVATE ${PBRT_CXX11_FEATURES} )
 TARGET_LINK_LIBRARIES ( imgtool ${ALL_PBRT_LIBS} )
 
-ADD_EXECUTABLE ( obj2pbrt src/tools/obj2pbrt.cpp  "src/integrators/owoIntegrator.cpp" "src/integrators/owoIntegrator.h")
+ADD_EXECUTABLE ( obj2pbrt src/tools/obj2pbrt.cpp )
 TARGET_COMPILE_FEATURES ( obj2pbrt PRIVATE ${PBRT_CXX11_FEATURES} )
 ADD_SANITIZERS ( obj2pbrt )
 
-ADD_EXECUTABLE ( cyhair2pbrt src/tools/cyhair2pbrt.cpp  "src/integrators/owoIntegrator.cpp" "src/integrators/owoIntegrator.h")
+ADD_EXECUTABLE ( cyhair2pbrt src/tools/cyhair2pbrt.cpp )
 ADD_SANITIZERS ( cyhair2pbrt )
 
 # Unit test
@@ -551,7 +551,7 @@ FILE ( GLOB PBRT_TEST_SOURCE
   src/tests/gtest/*.cc
   )
 
-ADD_EXECUTABLE ( pbrt_test ${PBRT_TEST_SOURCE}  "src/integrators/owoIntegrator.cpp" "src/integrators/owoIntegrator.h")
+ADD_EXECUTABLE ( pbrt_test ${PBRT_TEST_SOURCE} )
 ADD_SANITIZERS ( pbrt_test )
 TARGET_COMPILE_FEATURES ( pbrt_test PRIVATE ${PBRT_CXX11_FEATURES} )
 TARGET_LINK_LIBRARIES ( pbrt_test ${ALL_PBRT_LIBS} )
