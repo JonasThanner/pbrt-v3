@@ -22,8 +22,13 @@ namespace pbrt
 
         //Create Ray Hit and check for lights
         SurfaceInteraction interaction;
-        scene.Intersect(ray, &interaction);
+        if (!scene.Intersect(ray, &interaction))
+        {
+            return returnSpectrum;
+        }
 
+        //Grab a bsdf and if one doesnt exist => return empty/black area
+        interaction.ComputeScatteringFunctions(ray, arena);
         if (!interaction.bsdf)
         {
             return returnSpectrum;
@@ -32,7 +37,7 @@ namespace pbrt
         // Go trough all lights and check if they're visible => If yes, add to returnSpectrum
         for each (const auto& light in scene.lights) 
         {
-            //Wouldve liked to do this all by myself and do all the multiplications with cross product etc
+            //Wouldve liked to do this all by myself and do all the multiplications with cosine etc
             //but theres no uniform lightPoint/light sample for all lights, only the complete  Sample_Li()
             VisibilityTester visTester;
             Vector3f lightSourceDirection;
