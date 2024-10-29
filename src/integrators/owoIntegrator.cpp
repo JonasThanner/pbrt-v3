@@ -60,9 +60,44 @@ namespace pbrt
             }
         }
 
+        if (depth < 10)
+        {
+            depth++;
+
+            //Calculate the reflectance ray
+            RayDifferential reflectRay = CalculateReflectanceRay(ray, interaction, scene);
+
+            //Get the bsdf reflectance brightness with the reflectance ray
+            BxDFType type = BxDFType(BSDF_REFLECTION | BSDF_SPECULAR);
+            Spectrum reflectanceBrightness = interaction.bsdf->f(interaction.wo, reflectRay.d, type);
+
+            if (!reflectanceBrightness.IsBlack())
+            {
+                returnSpectrum += Li(reflectRay, scene, sampler, arena, depth);
+            }
+            
+
+        }
+
+
+
 
 
         return returnSpectrum;
+    }
+
+    RayDifferential OwOIntegrator::CalculateReflectanceRay(const RayDifferential &ray, const SurfaceInteraction &isect, const Scene &scene) const
+    {
+        //For now lets do perfect reflectance based on bsdf refelectance
+        
+        //First lets get the bsdf
+        BSDF* bsdf = isect.bsdf;
+
+        //Calculate the reflected ray
+        Vector3f normalizedRay = ray.d / ray.d.Length();
+        Vector3f reflectedRay = ray.d - 2 * Dot(normalizedRay, isect.n) * Vector3f(isect.n.x, isect.n.y, isect.n.z);
+        
+        return RayDifferential(Point3f(isect.wo.x, isect.wo.y, isect.wo.z), reflectedRay / reflectedRay.Length());
     }
 
     OwOIntegrator* CreateOwOIntegrator(const ParamSet& params,
@@ -73,4 +108,4 @@ namespace pbrt
                                  sampler, camera->film->GetSampleBounds());
     }
 
-    }
+}

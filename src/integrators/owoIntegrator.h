@@ -22,6 +22,10 @@ class OwOIntegrator : public SamplerIntegrator {
   private:
     // WhittedIntegrator Private Data
     const int maxDepth;
+
+    RayDifferential CalculateReflectanceRay(const RayDifferential &ray,
+                                     const SurfaceInteraction &isect,
+                                     const Scene &scene) const;
 };
 
 OwOIntegrator *CreateOwOIntegrator(
