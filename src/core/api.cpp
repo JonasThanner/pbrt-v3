@@ -118,6 +118,7 @@
 #include <map>
 #include <stdio.h>
 #include <integrators/owoIntegrator.h>
+#include <accelerators/owoaccel.h>
 
 namespace pbrt {
 
@@ -777,6 +778,8 @@ std::shared_ptr<Primitive> MakeAccelerator(
         accel = CreateBVHAccelerator(std::move(prims), paramSet);
     else if (name == "kdtree")
         accel = CreateKdTreeAccelerator(std::move(prims), paramSet);
+    else if (name == "owo")
+        accel = CreateOwOAccelerator(std::move(prims), paramSet);
     else
         Warning("Accelerator \"%s\" unknown.", name.c_str());
     paramSet.ReportUnused();
