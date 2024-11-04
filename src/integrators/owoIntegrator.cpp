@@ -21,15 +21,15 @@ namespace pbrt
         Spectrum returnSpectrum = Spectrum(0.0f);
 
         //Create Ray Hit and check for lights
-        SurfaceInteraction interaction;
-        if (!scene.Intersect(ray, &interaction))
+        SurfaceInteraction intersection;
+        if (!scene.Intersect(ray, &intersection))
         {
             return returnSpectrum;
         }
 
         //Grab a bsdf and if one doesnt exist => return empty/black area
-        interaction.ComputeScatteringFunctions(ray, arena);
-        if (!interaction.bsdf)
+        intersection.ComputeScatteringFunctions(ray, arena);
+        if (!intersection.bsdf)
         {
             return returnSpectrum;
         }
@@ -43,7 +43,7 @@ namespace pbrt
             Vector3f lightSourceDirection;
             Float pdf;
             VisibilityTester visibility;
-            Spectrum output = light->Sample_Li(interaction, sampler.Get2D(), &lightSourceDirection, &pdf,
+            Spectrum output = light->Sample_Li(intersection, sampler.Get2D(), &lightSourceDirection, &pdf,
                                            &visibility);
 
             if (output.IsBlack() || output.HasNaNs())
@@ -51,12 +51,12 @@ namespace pbrt
                 continue;
             }
             
-            Spectrum matColor = interaction.bsdf->f(interaction.wo, lightSourceDirection);
+            Spectrum matColor = intersection.bsdf->f(intersection.wo, lightSourceDirection);
 
             if (!matColor.IsBlack() && !output.IsBlack() && visibility.Unoccluded(scene) && pdf != 0)
             {
                 //Do cosine calculations
-                returnSpectrum += matColor * output * AbsDot(lightSourceDirection, interaction.shading.n) / pdf;
+                returnSpectrum += matColor * output * AbsDot(lightSourceDirection, intersection.shading.n) / pdf;
             }
         }
 
@@ -65,16 +65,32 @@ namespace pbrt
             depth++;
 
             //Calculate the reflectance ray
-            RayDifferential reflectRay = CalculateReflectanceRay(ray, interaction, scene);
+            RayDifferential reflectRay = CalculateReflectanceRay(ray, intersection, scene);
 
             //Get the bsdf reflectance brightness with the reflectance ray
             BxDFType type = BxDFType(BSDF_REFLECTION | BSDF_SPECULAR);
-            Spectrum reflectanceBrightness = interaction.bsdf->f(interaction.wo, reflectRay.d, type);
+            Spectrum reflectanceBrightness = intersection.bsdf->f(intersection.wo, reflectRay.d, type);
 
-            if (!reflectanceBrightness.IsBlack())
+            Vector3f wo = intersection.wo, wi;
+            Float pdf;
+
+
+
+            Spectrum f = intersection.bsdf->Sample_f(wo, &wi, sampler.Get2D(), &pdf, type);
+
+            //Vector3f wi_local = intersection.bsdf->WorldToLocal(reflectRay.d);
+            //Vector3f wo_local = intersection.bsdf->WorldToLocal(wo);
+
+
+
+
+            /*reflectanceBrightness = intersection.bsdf->f(wo_local, wi_local);*/
+            if (!f.IsBlack())
             {
-                returnSpectrum += Li(reflectRay, scene, sampler, arena, depth);
+                returnSpectrum += Li(intersection.SpawnRay(wi), scene, sampler, arena, depth);
             }
+
+            //returnSpectrum += SpecularReflect(ray, interaction, scene, sampler, arena, depth);
             
 
         }
@@ -89,13 +105,10 @@ namespace pbrt
     RayDifferential OwOIntegrator::CalculateReflectanceRay(const RayDifferential &ray, const SurfaceInteraction &isect, const Scene &scene) const
     {
         //For now lets do perfect reflectance based on bsdf refelectance
-        
-        //First lets get the bsdf
-        BSDF* bsdf = isect.bsdf;
 
         //Calculate the reflected ray
         Vector3f normalizedRay = ray.d / ray.d.Length();
-        Vector3f reflectedRay = ray.d - 2 * Dot(normalizedRay, isect.n) * Vector3f(isect.n.x, isect.n.y, isect.n.z);
+        Vector3f reflectedRay = - ray.d - Vector3f( 2 * Dot(isect.n, -normalizedRay) * isect.n);
         
         return RayDifferential(Point3f(isect.wo.x, isect.wo.y, isect.wo.z), reflectedRay / reflectedRay.Length());
     }
