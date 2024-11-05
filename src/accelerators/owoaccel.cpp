@@ -147,6 +147,9 @@ namespace pbrt{
         this->bounds = bounds;
         pbrtBounds = Bounds3f(Point3f(bounds.minX, bounds.minY, bounds.minZ), Point3f(bounds.maxX, bounds.maxY, bounds.maxZ));
 
+        //Debug
+        pbrtBounds = Bounds3f(Point3f(-100, -100, -100), Point3f(100, 100, 100));
+
         //Assign the real primitives
         this->realPrimitives = realPrimitives;
     }
@@ -208,7 +211,8 @@ namespace pbrt{
                     // => Remove it from the hitChildren and continue
                     else
                     {
-                        hitChildren.erase(std::remove(hitChildren.begin(), hitChildren.end(), closestChild), hitChildren.end());
+                        hitChildren.erase(hitChildren.begin() + closestChild);
+                        //hitChildren.erase(std::remove(hitChildren.begin(), hitChildren.end(), closestChild), hitChildren.end());
                     }
                 }
 
@@ -318,7 +322,7 @@ namespace pbrt{
         {
             if (childSegments[i]->primitives.size() > maxPrimsPerSegment)
             {
-                childSegments[i]->SplitOctree();
+                //childSegments[i]->SplitOctree();
             }
         }
     }

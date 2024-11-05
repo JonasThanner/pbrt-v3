@@ -36,7 +36,7 @@ class OwOAccel : public Aggregate
         };
 
     private:
-        OctreeSegment** childSegments;
+        OctreeSegment** childSegments = nullptr;
         std::vector<int> primitives = std::vector<int>();
         std::vector<int> assignedPrimitives = std::vector<int>();
         std::vector<int> orphanPrimitives = std::vector<int>(); //Prims that didnt fit into the OctreeSegments
