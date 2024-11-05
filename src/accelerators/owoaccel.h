@@ -16,19 +16,24 @@ class OwOAccel : public Aggregate
 
     public:
         BoundingBox(float minX, float maxX, float minY, float maxY, float minZ, float maxZ);
+        BoundingBox(Bounds3f pbrtBox);
         BoundingBox();
     };
 
     class OctreeSegment
     {
     public:
-
+        OctreeSegment();
         OctreeSegment(BoundingBox bounds, std::vector<std::shared_ptr<Primitive>>* realPrimitives);
         Bounds3f pbrtBounds;
         BoundingBox bounds;
         int maxPrimsPerSegment = 10;
         bool Intersect(const Ray& ray, SurfaceInteraction* isect) const;
         void SplitOctree();
+        void AddPrimitive(int addition)
+        {
+            primitives.push_back(addition);
+        };
 
     private:
         OctreeSegment** childSegments;
@@ -38,12 +43,11 @@ class OwOAccel : public Aggregate
         std::vector<std::shared_ptr<Primitive>>* realPrimitives;
 
         bool IsInsideBounds(Bounds3f bounds);
-        bool IntersectVector(const Ray& ray, SurfaceInteraction* isect, std::vector<int> primList) const;
+        bool IntersectVector(const Ray& ray, SurfaceInteraction* isect, const std::vector<int>* primList) const;
 
     };
 
 	public:
-		    // BVHAccel Public Methods
           OwOAccel(std::vector<std::shared_ptr<Primitive>> p);
           Bounds3f WorldBound() const;
           ~OwOAccel();

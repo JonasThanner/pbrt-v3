@@ -44,6 +44,13 @@ namespace pbrt{
 
         //Create Octree
         root = OctreeSegment(boundingBox, &primitives);
+
+        //Fill octree
+        for (int i = 0; i < primitives.size(); i++)
+        {
+            root.AddPrimitive(i);
+        }
+
         root.SplitOctree();
     }
 
@@ -130,6 +137,10 @@ namespace pbrt{
 
     //======================================== Octree Segment Part ========================================
 
+    OwOAccel::OctreeSegment::OctreeSegment()
+    {
+    }
+
     OwOAccel::OctreeSegment::OctreeSegment(BoundingBox bounds, std::vector<std::shared_ptr<Primitive>>* realPrimitives)
     {
         //Assign Bounds
@@ -208,7 +219,7 @@ namespace pbrt{
             // => Once closest one found, set that as isect and return with true, assuming a hit was found
             else
             {
-                return IntersectVector(ray, isect, primitives);
+                return IntersectVector(ray, isect, &primitives);
             }
 
             //We can be here, if we do have children and got their closest hit
@@ -218,7 +229,7 @@ namespace pbrt{
             //First try and hit all orphan primitives
             //if there is an orphan hit, compare them
             SurfaceInteraction* orphanHit;
-            if (IntersectVector(ray, orphanHit, orphanPrimitives))
+            if (IntersectVector(ray, orphanHit, &orphanPrimitives))
             {
                 if (childrenInteraction != nullptr)
                 {
@@ -325,10 +336,10 @@ namespace pbrt{
         return true;
     }
 
-    bool OwOAccel::OctreeSegment::IntersectVector(const Ray& ray, SurfaceInteraction* isect, std::vector<int> primList) const
+    bool OwOAccel::OctreeSegment::IntersectVector(const Ray& ray, SurfaceInteraction* isect, const std::vector<int>* primList) const
     {
         // No primitives to intersect with
-        if (primList.empty())
+        if (primList->empty())
         {
             return false;
         }
@@ -337,10 +348,10 @@ namespace pbrt{
         float isectPrevDepth = std::numeric_limits<float>::infinity();
         SurfaceInteraction isectTemp;
 
-        for (int i = 0; i < primList.size(); i++)
+        for (int i = 0; i < primList->size(); i++)
         {
             // Run hit test on single primitive
-            if (realPrimitives->at(primList[i])->Intersect(ray, &isectTemp))
+            if (realPrimitives->at(primList->at(i))->Intersect(ray, &isectTemp))
             {
                 float newDepth = (isectTemp.p - ray.o).LengthSquared();
                 if (prevSect == -1 || newDepth < isectPrevDepth)
@@ -382,6 +393,36 @@ namespace pbrt{
 
     OwOAccel::BoundingBox::BoundingBox(float minX, float maxX, float minY, float maxY, float minZ, float maxZ)
     {
+        this->minX = minX;
+        this->maxX = maxX;
+        this->minY = minY;
+        this->maxY = maxY;
+        this->minZ = minZ;
+        this->maxZ = maxZ;
+    }
+
+    OwOAccel::BoundingBox::BoundingBox(Bounds3f pbrtBox)
+    {
+        float minX = pbrtBox.Corner(0).x;
+        float maxX = pbrtBox.Corner(0).x;
+        float minY = pbrtBox.Corner(0).y;
+        float maxY = pbrtBox.Corner(0).y;
+        float minZ = pbrtBox.Corner(0).z;
+        float maxZ = pbrtBox.Corner(0).z;
+
+        // Iterate over all corners to find min and max for each axis
+        for (int i = 0; i < 8; i++)
+        {
+            minX = std::min(minX, pbrtBox.Corner(i).x);
+            maxX = std::max(maxX, pbrtBox.Corner(i).x);
+
+            minY = std::min(minY, pbrtBox.Corner(i).y);
+            maxY = std::max(maxY, pbrtBox.Corner(i).y);
+
+            minZ = std::min(minZ, pbrtBox.Corner(i).z);
+            maxZ = std::max(maxZ, pbrtBox.Corner(i).z);
+        }
+
         this->minX = minX;
         this->maxX = maxX;
         this->minY = minY;
