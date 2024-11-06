@@ -58,7 +58,7 @@ namespace pbrt{
         }
 
         //Create Octree
-        root = OctreeSegment(BoundingBox(bounds), &primitives);
+        root = OctreeSegment(BoundingBox(-100, -100, -100, 100, 100, 100), &primitives);
 
         //Fill octree
         for (int i = 0; i < primitives.size(); i++)
@@ -190,17 +190,15 @@ namespace pbrt{
                 //Go trough all children
                 for (int i = 0; i < 8; i++)
                 {
-                    childSegments[i]->Intersect(ray, &childrenInteraction);
-
-                    //if (childSegments[i]->pbrtBounds.IntersectP(ray))
-                    //{
-                    //    hitChildren.push_back(i);
-                    //}
+                    if (childSegments[i]->pbrtBounds.IntersectP(ray))
+                    {
+                        hitChildren.push_back(i);
+                    }
                 }
 
 
                 //Go trough the closest hit children as long as we do not find a valid Intersection
-                while (!childIntersectFound && !hitChildren.empty() && false)
+                while (!childIntersectFound && !hitChildren.empty())
                 {
                     //Get intersection from new closest child
                     int closestChild = hitChildren.at(0);
@@ -291,38 +289,45 @@ namespace pbrt{
         float midY = (bounds.minY + bounds.maxY) / 2;
         float midZ = (bounds.minZ + bounds.maxZ) / 2;
 
+        childSegments[0] = new OctreeSegment(BoundingBox(-100, -100, -100, 0, 0, 0), realPrimitives);
+        childSegments[1] = new OctreeSegment(BoundingBox(0, -100, -100, 100, 0, 0), realPrimitives);
+        childSegments[2] = new OctreeSegment(BoundingBox(-100, -100, 0, 0, 0, 100), realPrimitives);
+        childSegments[3] = new OctreeSegment(BoundingBox(0, -100, 0, 100, 0, 100), realPrimitives);
+        childSegments[4] = new OctreeSegment(BoundingBox(-100, 0, -100, 0, 100, 0), realPrimitives);
+        childSegments[5] = new OctreeSegment(BoundingBox(0, 0, -100, 100, 100, 0), realPrimitives);
+        childSegments[6] = new OctreeSegment(BoundingBox(-100, 0, 0, 0, 100, 100), realPrimitives);
+        childSegments[7] = new OctreeSegment(BoundingBox(0, 0, 0, 100, 100, 100), realPrimitives);
+
         //Split Octree an Create BoundingBoxes
-        for (int i = 0; i < 8; i++)
-        {
-            bool isLeft = (i & 1) == 0;
-            bool isBottom = (i & 2) == 0;
-            bool isBack = (i & 4) == 0;
+        //for (int i = 0; i < 8; i++)
+        //{
+        //    bool isLeft = (i & 1) == 0;
+        //    bool isBottom = (i & 2) == 0;
+        //    bool isBack = (i & 4) == 0;
 
-            float minX = isLeft ? bounds.minX : midX;
-            float maxX = isLeft ? midX : bounds.maxX;
-            float minY = isBottom ? bounds.minY : midY;
-            float maxY = isBottom ? midY : bounds.maxY;
-            float minZ = isBack ? bounds.minZ : midZ;
-            float maxZ = isBack ? midZ : bounds.maxZ;
+        //    float minX = isLeft ? bounds.minX : midX;
+        //    float maxX = isLeft ? midX : bounds.maxX;
+        //    float minY = isBottom ? bounds.minY : midY;
+        //    float maxY = isBottom ? midY : bounds.maxY;
+        //    float minZ = isBack ? bounds.minZ : midZ;
+        //    float maxZ = isBack ? midZ : bounds.maxZ;
 
-            childSegments[i] = new OctreeSegment(BoundingBox(minX, minY, minZ, maxX, maxY, maxZ), realPrimitives);
-        }
+        //    childSegments[i] = new OctreeSegment(BoundingBox(-10, -10, -10, 0, 0, 0), realPrimitives);
+        //}
 
         //Go trough each octree segment and then go trough all primitives and check if they are inside the octree segments
         for (int i = 0; i < 8; i++)
         {
-            childSegments[i]->primitives = primitives;
-            //for (int k = 0; k < primitives.size(); k++)
-            //{
-            //    childSegments[i]->primitives.push_back(k);
-            //    //If the primitive is inside the child segment
-            //    //if (childSegments[i]->IsInsideBounds(realPrimitives->at(primitives[k])->WorldBound()) || true)
-            //    //{
-            //    //    //Add it to the child segment
-            //    //    childSegments[i]->primitives.push_back(k);
-            //    //    assignedPrimitives.push_back(k);
-            //    //}
-            //}
+            for (int k = 0; k < primitives.size(); k++)
+            {
+                //If the primitive is inside the child segment
+                if (childSegments[i]->IsInsideBounds(realPrimitives->at(primitives[k])->WorldBound()))
+                {
+                    //Add it to the child segment
+                    childSegments[i]->primitives.push_back(k);
+                    assignedPrimitives.push_back(k);
+                }
+            }
         }
 
         //After we have assigned all the primitives check for orphan primitives
