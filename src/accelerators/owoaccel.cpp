@@ -2,11 +2,38 @@
 
 
 
-
+#include "stats.h"
 #include "owoaccel.h"
 
 namespace pbrt{    
     
+
+    void CalculateMinMax(const Bounds3f& bounds, float& minX, float& minY, float& minZ, float& maxX, float& maxY, float& maxZ)
+    {
+        // Initialize min and max values to extreme values
+        minX = std::numeric_limits<float>::max();
+        maxX = std::numeric_limits<float>::lowest();
+        minY = std::numeric_limits<float>::max();
+        maxY = std::numeric_limits<float>::lowest();
+        minZ = std::numeric_limits<float>::max();
+        maxZ = std::numeric_limits<float>::lowest();
+
+        // Loop through each of the 8 corners of the bounds
+        for (int i = 0; i < 8; ++i)
+        {
+            Point3f corner = bounds.Corner(i);
+
+            // Update min and max for x, y, z
+            minX = std::min(minX, corner.x);
+            maxX = std::max(maxX, corner.x);
+            minY = std::min(minY, corner.y);
+            maxY = std::max(maxY, corner.y);
+            minZ = std::min(minZ, corner.z);
+            maxZ = std::max(maxZ, corner.z);
+        }
+    }
+
+
     Bounds3f OwOAccel::WorldBound() const
     {
         return bounds;
@@ -30,20 +57,8 @@ namespace pbrt{
             primBounds.push_back(b);
         }
 
-        //Create BoundingBox
-        float minX = std::min(bounds.Corner(0).x, bounds.Corner(1).x);
-        float maxX = std::max(bounds.Corner(0).x, bounds.Corner(1).x);
-
-        float minY = std::min(bounds.Corner(0).y, bounds.Corner(1).y);
-        float maxY = std::max(bounds.Corner(0).y, bounds.Corner(1).y);
-
-        float minZ = std::min(bounds.Corner(0).z, bounds.Corner(1).z);
-        float maxZ = std::max(bounds.Corner(0).z, bounds.Corner(1).z);
-
-        BoundingBox boundingBox = BoundingBox(minX, maxX, minY, maxY, minZ, maxZ);
-
         //Create Octree
-        root = OctreeSegment(boundingBox, &primitives);
+        root = OctreeSegment(BoundingBox(bounds), &primitives);
 
         //Fill octree
         for (int i = 0; i < primitives.size(); i++)
@@ -134,7 +149,6 @@ namespace pbrt{
 
 
 
-
     //======================================== Octree Segment Part ========================================
 
     OwOAccel::OctreeSegment::OctreeSegment()
@@ -145,10 +159,7 @@ namespace pbrt{
     {
         //Assign Bounds
         this->bounds = bounds;
-        pbrtBounds = Bounds3f(Point3f(bounds.minX, bounds.minY, bounds.minZ), Point3f(bounds.maxX, bounds.maxY, bounds.maxZ));
-
-        //Debug
-        pbrtBounds = Bounds3f(Point3f(-100, -100, -100), Point3f(100, 100, 100));
+        pbrtBounds = Bounds3f(Point3f(bounds.maxX, bounds.maxY, bounds.maxZ), Point3f(bounds.minX, bounds.minY, bounds.minZ));
 
         //Assign the real primitives
         this->realPrimitives = realPrimitives;
@@ -164,6 +175,9 @@ namespace pbrt{
     // => Then we compare the orphan primitives check to the results from our nodes and pick the closest one
     bool OwOAccel::OctreeSegment::Intersect(const Ray& ray, SurfaceInteraction* isect) const
     {
+        SurfaceInteraction childrenInteraction;
+        bool childIntersectFound = false;
+
         //First check if ray even hits the bounds of octree segment
         if (pbrtBounds.IntersectP(ray))
         {
@@ -171,22 +185,22 @@ namespace pbrt{
             // => Save the hit children
             //After this, we need to see which children is the closest to the ray origin and traverse that first
             std::vector<int> hitChildren = std::vector<int>();
-            SurfaceInteraction* childrenInteraction;
             if (childSegments != nullptr)
             {
                 //Go trough all children
                 for (int i = 0; i < 8; i++)
                 {
-                    if (childSegments[i]->pbrtBounds.IntersectP(ray))
-                    {
-                        hitChildren.push_back(i);
-                    }
+                    childSegments[i]->Intersect(ray, &childrenInteraction);
+
+                    //if (childSegments[i]->pbrtBounds.IntersectP(ray))
+                    //{
+                    //    hitChildren.push_back(i);
+                    //}
                 }
 
 
                 //Go trough the closest hit children as long as we do not find a valid Intersection
-                bool validIntersectionFound = false;
-                while (!validIntersectionFound && !hitChildren.empty())
+                while (!childIntersectFound && !hitChildren.empty() && false)
                 {
                     //Get intersection from new closest child
                     int closestChild = hitChildren.at(0);
@@ -202,9 +216,10 @@ namespace pbrt{
                     }
 
                     //Make intersection test with child
-                    if (childSegments[closestChild]->Intersect(ray, childrenInteraction))
+                    //childSegments[closestChild]->Intersect(ray, childrenInteraction)
+                    if (childSegments[closestChild]->Intersect(ray, &childrenInteraction))
                     {
-                        validIntersectionFound = true;
+                        childIntersectFound = true;
                     }
 
                     //If the closest child does not have any intersections
@@ -212,7 +227,6 @@ namespace pbrt{
                     else
                     {
                         hitChildren.erase(hitChildren.begin() + closestChild);
-                        //hitChildren.erase(std::remove(hitChildren.begin(), hitChildren.end(), closestChild), hitChildren.end());
                     }
                 }
 
@@ -232,30 +246,30 @@ namespace pbrt{
 
             //First try and hit all orphan primitives
             //if there is an orphan hit, compare them
-            SurfaceInteraction* orphanHit;
-            if (IntersectVector(ray, orphanHit, &orphanPrimitives))
+            SurfaceInteraction orphanHit;
+            if (IntersectVector(ray, &orphanHit, &orphanPrimitives))
             {
-                if (childrenInteraction != nullptr)
+                if (childIntersectFound)
                 {
-                    if ((orphanHit->p - ray.o).LengthSquared() < (childrenInteraction->p - ray.o).LengthSquared())
+                    if ((orphanHit.p - ray.o).LengthSquared() < (childrenInteraction.p - ray.o).LengthSquared())
                     {
-                        isect = orphanHit;
+                        *isect = orphanHit;
                         return true;
                     }
                 }
 
                 else
                 {
-                    isect = orphanHit;
+                    *isect = orphanHit;
                     return true;
                 }
 
             }
 
             //No orphan hit => Return the intersection of children (if it exists)
-            if (childrenInteraction != nullptr)
+            if (childIntersectFound)
             {
-                isect = childrenInteraction;
+                *isect = childrenInteraction;
                 return true;
             }
         }
@@ -291,21 +305,24 @@ namespace pbrt{
             float minZ = isBack ? bounds.minZ : midZ;
             float maxZ = isBack ? midZ : bounds.maxZ;
 
-            childSegments[i] = new OctreeSegment(BoundingBox(minX, maxX, minY, maxY, minZ, maxZ), realPrimitives);
+            childSegments[i] = new OctreeSegment(BoundingBox(minX, minY, minZ, maxX, maxY, maxZ), realPrimitives);
         }
 
         //Go trough each octree segment and then go trough all primitives and check if they are inside the octree segments
         for (int i = 0; i < 8; i++)
         {
-            for (int k = 0; k < primitives.size(); k++)
-            {
-                //If the primitive is inside the child segment
-                if (childSegments[i]->IsInsideBounds(realPrimitives->at(primitives[i])->WorldBound()))
-                {
-                    //Add it to the child segment
-                    childSegments[i]->primitives.push_back(k);
-                }
-            }
+            childSegments[i]->primitives = primitives;
+            //for (int k = 0; k < primitives.size(); k++)
+            //{
+            //    childSegments[i]->primitives.push_back(k);
+            //    //If the primitive is inside the child segment
+            //    //if (childSegments[i]->IsInsideBounds(realPrimitives->at(primitives[k])->WorldBound()) || true)
+            //    //{
+            //    //    //Add it to the child segment
+            //    //    childSegments[i]->primitives.push_back(k);
+            //    //    assignedPrimitives.push_back(k);
+            //    //}
+            //}
         }
 
         //After we have assigned all the primitives check for orphan primitives
@@ -313,7 +330,7 @@ namespace pbrt{
         {
             if (std::find(assignedPrimitives.begin(), assignedPrimitives.end(), prim) == assignedPrimitives.end())
             {
-                orphanPrimitives.push_back(prim);
+                //orphanPrimitives.push_back(prim);
             }
         }
 
@@ -382,7 +399,7 @@ namespace pbrt{
 
     bool OwOAccel::BoundingBox::Contains(Point3f point)
     {
-        return (point.x >= minY && point.x <= maxX &&
+        return (point.x >= minX && point.x <= maxX &&
             point.y >= minY && point.y <= maxY &&
             point.z >= minZ && point.z <= maxZ);
     }
@@ -395,7 +412,7 @@ namespace pbrt{
         return Point3f(midX, midY, midZ);
     }
 
-    OwOAccel::BoundingBox::BoundingBox(float minX, float maxX, float minY, float maxY, float minZ, float maxZ)
+    OwOAccel::BoundingBox::BoundingBox(float minX, float minY, float minZ, float maxX, float maxY, float maxZ)
     {
         this->minX = minX;
         this->maxX = maxX;
@@ -407,32 +424,7 @@ namespace pbrt{
 
     OwOAccel::BoundingBox::BoundingBox(Bounds3f pbrtBox)
     {
-        float minX = pbrtBox.Corner(0).x;
-        float maxX = pbrtBox.Corner(0).x;
-        float minY = pbrtBox.Corner(0).y;
-        float maxY = pbrtBox.Corner(0).y;
-        float minZ = pbrtBox.Corner(0).z;
-        float maxZ = pbrtBox.Corner(0).z;
-
-        // Iterate over all corners to find min and max for each axis
-        for (int i = 0; i < 8; i++)
-        {
-            minX = std::min(minX, pbrtBox.Corner(i).x);
-            maxX = std::max(maxX, pbrtBox.Corner(i).x);
-
-            minY = std::min(minY, pbrtBox.Corner(i).y);
-            maxY = std::max(maxY, pbrtBox.Corner(i).y);
-
-            minZ = std::min(minZ, pbrtBox.Corner(i).z);
-            maxZ = std::max(maxZ, pbrtBox.Corner(i).z);
-        }
-
-        this->minX = minX;
-        this->maxX = maxX;
-        this->minY = minY;
-        this->maxY = maxY;
-        this->minZ = minZ;
-        this->maxZ = maxZ;
+        CalculateMinMax(pbrtBox, minX, minY, minZ, maxX, maxY, maxZ);
     }
 
     OwOAccel::BoundingBox::BoundingBox()

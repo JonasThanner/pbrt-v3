@@ -15,7 +15,7 @@ class OwOAccel : public Aggregate
         Point3f GetMiddle();
 
     public:
-        BoundingBox(float minX, float maxX, float minY, float maxY, float minZ, float maxZ);
+        BoundingBox(float minX, float minY, float minZ, float maxX, float maxY, float maxZ);
         BoundingBox(Bounds3f pbrtBox);
         BoundingBox();
     };
@@ -48,6 +48,7 @@ class OwOAccel : public Aggregate
     };
 
 	public:
+
           OwOAccel(std::vector<std::shared_ptr<Primitive>> p);
           Bounds3f WorldBound() const;
           ~OwOAccel();
