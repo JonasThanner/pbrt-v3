@@ -29,7 +29,7 @@ class OwOAccel : public Aggregate
         BoundingBox bounds;
         int maxPrimsPerSegment = 10;
         bool Intersect(const Ray& ray, SurfaceInteraction* isect) const;
-        void SplitOctree();
+        void SplitOctree(int depth = 0);
         void AddPrimitive(int addition)
         {
             primitives.push_back(addition);

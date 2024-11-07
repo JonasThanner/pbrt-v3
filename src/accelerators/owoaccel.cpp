@@ -121,6 +121,9 @@ namespace pbrt{
 
     bool OwOAccel::IntersectP(const Ray& ray) const
     {
+        SurfaceInteraction stuffs;
+        return root.Intersect(ray, &stuffs);
+
         // No primitives to intersect with
         if (primitives.empty())
         {
@@ -279,8 +282,9 @@ namespace pbrt{
     //To do so we need to:
     // => Create 4 new segments of Octree
     // => For each Segment check if a primitive is inside
-    void OwOAccel::OctreeSegment::SplitOctree()
+    void OwOAccel::OctreeSegment::SplitOctree(int depth)
     {
+
         //Create 4 new segments with half bounds
         childSegments = new OctreeSegment*[8];
 
@@ -289,31 +293,32 @@ namespace pbrt{
         float midY = (bounds.minY + bounds.maxY) / 2;
         float midZ = (bounds.minZ + bounds.maxZ) / 2;
 
-        childSegments[0] = new OctreeSegment(BoundingBox(-100, -100, -100, 0, 0, 0), realPrimitives);
-        childSegments[1] = new OctreeSegment(BoundingBox(0, -100, -100, 100, 0, 0), realPrimitives);
-        childSegments[2] = new OctreeSegment(BoundingBox(-100, -100, 0, 0, 0, 100), realPrimitives);
-        childSegments[3] = new OctreeSegment(BoundingBox(0, -100, 0, 100, 0, 100), realPrimitives);
-        childSegments[4] = new OctreeSegment(BoundingBox(-100, 0, -100, 0, 100, 0), realPrimitives);
-        childSegments[5] = new OctreeSegment(BoundingBox(0, 0, -100, 100, 100, 0), realPrimitives);
-        childSegments[6] = new OctreeSegment(BoundingBox(-100, 0, 0, 0, 100, 100), realPrimitives);
-        childSegments[7] = new OctreeSegment(BoundingBox(0, 0, 0, 100, 100, 100), realPrimitives);
+        //childSegments[0] = new OctreeSegment(BoundingBox(-100, -100, -100, 100, 100, 100), realPrimitives);
+        //childSegments[0] = new OctreeSegment(BoundingBox(-100, -100, -100, 0, 0, 0), realPrimitives);
+        //childSegments[1] = new OctreeSegment(BoundingBox(0, -100, -100, 100, 0, 0), realPrimitives);
+        //childSegments[2] = new OctreeSegment(BoundingBox(-100, -100, 0, 0, 0, 100), realPrimitives);
+        //childSegments[3] = new OctreeSegment(BoundingBox(0, -100, 0, 100, 0, 100), realPrimitives);
+        //childSegments[4] = new OctreeSegment(BoundingBox(-100, 0, -100, 0, 100, 0), realPrimitives);
+        //childSegments[5] = new OctreeSegment(BoundingBox(0, 0, -100, 100, 100, 0), realPrimitives);
+        //childSegments[6] = new OctreeSegment(BoundingBox(-100, 0, 0, 0, 100, 100), realPrimitives);
+        //childSegments[7] = new OctreeSegment(BoundingBox(0, 0, 0, 100, 100, 100), realPrimitives);
 
         //Split Octree an Create BoundingBoxes
-        //for (int i = 0; i < 8; i++)
-        //{
-        //    bool isLeft = (i & 1) == 0;
-        //    bool isBottom = (i & 2) == 0;
-        //    bool isBack = (i & 4) == 0;
+        for (int i = 0; i < 8; i++)
+        {
+            bool isLeft = (i & 1) == 0;
+            bool isBottom = (i & 2) == 0;
+            bool isBack = (i & 4) == 0;
 
-        //    float minX = isLeft ? bounds.minX : midX;
-        //    float maxX = isLeft ? midX : bounds.maxX;
-        //    float minY = isBottom ? bounds.minY : midY;
-        //    float maxY = isBottom ? midY : bounds.maxY;
-        //    float minZ = isBack ? bounds.minZ : midZ;
-        //    float maxZ = isBack ? midZ : bounds.maxZ;
+            float minX = isLeft ? bounds.minX : midX;
+            float maxX = isLeft ? midX : bounds.maxX;
+            float minY = isBottom ? bounds.minY : midY;
+            float maxY = isBottom ? midY : bounds.maxY;
+            float minZ = isBack ? bounds.minZ : midZ;
+            float maxZ = isBack ? midZ : bounds.maxZ;
 
-        //    childSegments[i] = new OctreeSegment(BoundingBox(-10, -10, -10, 0, 0, 0), realPrimitives);
-        //}
+            childSegments[i] = new OctreeSegment(BoundingBox(minX, minY, minZ, maxX, maxY, maxZ), realPrimitives);
+        }
 
         //Go trough each octree segment and then go trough all primitives and check if they are inside the octree segments
         for (int i = 0; i < 8; i++)
@@ -335,14 +340,14 @@ namespace pbrt{
         {
             if (std::find(assignedPrimitives.begin(), assignedPrimitives.end(), prim) == assignedPrimitives.end())
             {
-                //orphanPrimitives.push_back(prim);
+                orphanPrimitives.push_back(prim);
             }
         }
 
         //Split each segment again if their primitives size is too big
         for (int i = 0; i < 8; i++)
         {
-            if (childSegments[i]->primitives.size() > maxPrimsPerSegment)
+            if (childSegments[i]->primitives.size() > maxPrimsPerSegment && depth < 20)
             {
                 //childSegments[i]->SplitOctree();
             }
@@ -351,15 +356,16 @@ namespace pbrt{
 
     bool OwOAccel::OctreeSegment::IsInsideBounds(Bounds3f primBounds)
     {
+        float one = primBounds.Corner(1).x;
         for (int i = 0; i < 8; i++)
         {
-            if (!bounds.Contains(primBounds.Corner(i)))
+            if (bounds.Contains(primBounds.Corner(i)))
             {
-                return false;
+                return true;
             }
         }
 
-        return true;
+        return false;
     }
 
     bool OwOAccel::OctreeSegment::IntersectVector(const Ray& ray, SurfaceInteraction* isect, const std::vector<int>* primList) const
